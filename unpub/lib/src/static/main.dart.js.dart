@@ -1,4 +1,5 @@
-const content = """(function dartProgram(){function copyProperties(a,b){var s=Object.keys(a)
+const content =
+    """(function dartProgram(){function copyProperties(a,b){var s=Object.keys(a)
 for(var r=0;r<s.length;r++){var q=s[r]
 b[q]=a[q]}}function mixinProperties(a,b){var s=Object.keys(a)
 for(var r=0;r<s.length;r++){var q=s[r]
@@ -14128,7 +14129,7 @@ m=G.bW(n.a(o.R(C.f,b4)),t.f.a(o.R(C.i,b4)),a5,a4.dx)
 a4.e=new G.bf(m)
 l=T.x(b2,a4.dx,"img")
 T.an(l,"alt","dart pub logo")
-T.an(l,"src","https://pub.dev/static/img/pub-dev-logo-2x.png?hash=umitaheu8hl7gd3mineshk2koqfngugi")
+T.an(l,"src","https://pub.dev/static/hash-pb35dgsm/img/pub-dev-logo.svg")
 a4.B(l)
 k=T.aE(b2,p)
 a4.t(k,"_flex-space")

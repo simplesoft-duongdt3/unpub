@@ -34,13 +34,9 @@ class App {
   /// A forward proxy uri
   final Uri? proxy_origin;
 
-  /// Environment variable name for the uploader token
-  static const String uploaderTokenEnvVar = 'UPLOADER_TOKEN';
+  final String uploaderEmail;
 
-  /// Environment variable name for the uploader email
-  static const String uploaderEmailEnvVar = 'UPLOADER_EMAIL';
-
-  final String? overrideUploaderEmail;
+  final String uploaderToken;
 
   /// validate if the package can be published
   ///
@@ -51,8 +47,9 @@ class App {
   App({
     required this.metaStore,
     required this.packageStore,
+    required this.uploaderEmail,
+    required this.uploaderToken,
     this.upstream = 'https://pub.dev',
-    this.overrideUploaderEmail,
     this.uploadValidator,
     this.proxy_origin,
   });
@@ -92,31 +89,27 @@ class App {
   }
 
   Future<String> _getUploaderEmail(shelf.Request req) async {
-    if (overrideUploaderEmail != null) return overrideUploaderEmail!;
-
     var authHeader = req.headers[HttpHeaders.authorizationHeader];
     if (authHeader == null) throw 'missing authorization header';
 
     var token = authHeader.split(' ').last;
 
     // Get the expected token from environment variable
-    final envToken = Platform.environment[uploaderTokenEnvVar];
-    if (envToken == null || envToken.isEmpty) {
+    if (uploaderToken.isEmpty) {
       throw 'UPLOADER_TOKEN environment variable not set or empty';
     }
 
     // Validate the token
-    if (token != envToken) {
+    if (token != uploaderToken) {
       throw 'invalid authorization token';
     }
 
     // Get email from environment variable
-    final email = Platform.environment[uploaderEmailEnvVar];
-    if (email == null || email.isEmpty) {
+    if (uploaderEmail.isEmpty) {
       throw 'UPLOADER_EMAIL environment variable not set or empty';
     }
 
-    return email;
+    return uploaderEmail;
   }
 
   Future<HttpServer> serve([String host = '0.0.0.0', int port = 4000]) async {

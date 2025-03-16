@@ -1,3 +1,7 @@
+docker-compose up -d
+open http://localhost:24000
+
+
 # Unpub
 
 [![pub](https://img.shields.io/pub/v/unpub.svg)](https://pub.dev/packages/unpub)
