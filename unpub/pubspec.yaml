@@ -11,11 +11,9 @@ dependencies:
   shelf: ^1.2.0
   shelf_router: ^1.1.1
   http_parser: ^4.0.0
-  http: ^0.13.3
   archive: ^3.1.2
   logging: ^1.0.1
   meta: ^1.1.7
-  googleapis: ^4.0.0
   yaml: ^3.1.0
   pub_semver: ^2.0.0
   json_annotation: ^4.1.0

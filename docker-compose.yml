@@ -1,0 +1,67 @@
+version: '3'
+
+services:
+  # MongoDB for metadata storage
+  mongodb:
+    image: mongo:4.4
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    restart: unless-stopped
+
+  # Unpub server
+  unpub:
+    image: dart:stable
+    working_dir: /app
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./unpub:/app/unpub
+      - ./package_storage:/app/unpub-packages
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017/dart_pub
+      - UPLOADER_TOKEN=89dsfl8s091212
+      - UPLOADER_EMAIL=doanthanhduong11031990@gmail.com
+    depends_on:
+      - mongodb
+    command: >
+      bash -c "
+        cd /app/unpub &&
+        dart pub get &&
+        dart example/main.dart
+      "
+    restart: unless-stopped
+
+  # Unpub web build step
+  unpub_web_builder:
+    image: dart:stable
+    working_dir: /app
+    volumes:
+      - ./unpub_web:/app/unpub_web
+      - ./unpub:/app/unpub
+      - ./unpub_web_build:/app/unpub_web/build
+    command: >
+      bash -c "
+        cd /app/unpub_web &&
+        dart pub get &&
+        dart pub global activate webdev &&
+        export PATH=\"$PATH\":~/.pub-cache/bin &&
+        webdev build --output build
+      "
+
+  # Nginx to serve the built web application
+  unpub_web:
+    image: nginx:stable
+    ports:
+      - "8080:80"
+    volumes:
+      - ./unpub_web_build:/usr/share/nginx/html
+    depends_on:
+      - unpub_web_builder
+
+volumes:
+  mongodb_data:
+    driver: local
+  unpub_web_build:
+    driver: local

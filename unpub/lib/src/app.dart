@@ -3,9 +3,6 @@ import 'dart:io';
 import 'package:collection/collection.dart' show IterableExtension;
 import 'package:shelf/shelf.dart' as shelf;
 import 'package:shelf/shelf_io.dart' as shelf_io;
-import 'package:http/http.dart' as http;
-import 'package:http/io_client.dart';
-import 'package:googleapis/oauth2/v2.dart';
 import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:shelf_cors_headers/shelf_cors_headers.dart';
@@ -34,12 +31,16 @@ class App {
   /// upstream url, default: https://pub.dev
   final String upstream;
 
-  /// http(s) proxy to call googleapis (to get uploader email)
-  final String? googleapisProxy;
-  final String? overrideUploaderEmail;
-
   /// A forward proxy uri
   final Uri? proxy_origin;
+
+  /// Environment variable name for the uploader token
+  static const String uploaderTokenEnvVar = 'UPLOADER_TOKEN';
+
+  /// Environment variable name for the uploader email
+  static const String uploaderEmailEnvVar = 'UPLOADER_EMAIL';
+
+  final String? overrideUploaderEmail;
 
   /// validate if the package can be published
   ///
@@ -51,7 +52,6 @@ class App {
     required this.metaStore,
     required this.packageStore,
     this.upstream = 'https://pub.dev',
-    this.googleapisProxy,
     this.overrideUploaderEmail,
     this.uploadValidator,
     this.proxy_origin,
@@ -80,8 +80,6 @@ class App {
         }),
       );
 
-  http.Client? _googleapisClient;
-
   String _resolveUrl(shelf.Request req, String reference) {
     if (proxy_origin != null) {
       return proxy_origin!.resolve(reference).toString();
@@ -101,20 +99,24 @@ class App {
 
     var token = authHeader.split(' ').last;
 
-    if (_googleapisClient == null) {
-      if (googleapisProxy != null) {
-        _googleapisClient = IOClient(HttpClient()
-          ..findProxy = (url) => HttpClient.findProxyFromEnvironment(url,
-              environment: {"https_proxy": googleapisProxy!}));
-      } else {
-        _googleapisClient = http.Client();
-      }
+    // Get the expected token from environment variable
+    final envToken = Platform.environment[uploaderTokenEnvVar];
+    if (envToken == null || envToken.isEmpty) {
+      throw 'UPLOADER_TOKEN environment variable not set or empty';
     }
 
-    var info =
-        await Oauth2Api(_googleapisClient!).tokeninfo(accessToken: token);
-    if (info.email == null) throw 'fail to get google account email';
-    return info.email!;
+    // Validate the token
+    if (token != envToken) {
+      throw 'invalid authorization token';
+    }
+
+    // Get email from environment variable
+    final email = Platform.environment[uploaderEmailEnvVar];
+    if (email == null || email.isEmpty) {
+      throw 'UPLOADER_EMAIL environment variable not set or empty';
+    }
+
+    return email;
   }
 
   Future<HttpServer> serve([String host = '0.0.0.0', int port = 4000]) async {
@@ -135,7 +137,8 @@ class App {
     var name = item.pubspec['name'] as String;
     var version = item.version;
     return {
-      'archive_url': _resolveUrl(req, '/packages/$name/versions/$version.tar.gz'),
+      'archive_url':
+          _resolveUrl(req, '/packages/$name/versions/$version.tar.gz'),
       'pubspec': item.pubspec,
       'version': version,
     };
@@ -163,9 +166,8 @@ class App {
           semver.Version.parse(a.version), semver.Version.parse(b.version));
     });
 
-    var versionMaps = package.versions
-        .map((item) => _versionToJson(item, req))
-        .toList();
+    var versionMaps =
+        package.versions.map((item) => _versionToJson(item, req)).toList();
 
     return _okWithJson({
       'name': name,
@@ -228,8 +230,7 @@ class App {
   @Route.get('/api/packages/versions/new')
   Future<shelf.Response> getUploadUrl(shelf.Request req) async {
     return _okWithJson({
-      'url': _resolveUrl(req, '/api/packages/versions/newUpload')
-          .toString(),
+      'url': _resolveUrl(req, '/api/packages/versions/newUpload').toString(),
       'fields': {},
     });
   }
@@ -342,9 +343,11 @@ class App {
       await metaStore.addVersion(name, unpubVersion);
 
       // TODO: Upload docs
-      return shelf.Response.found(_resolveUrl(req, '/api/packages/versions/newUploadFinish'));
+      return shelf.Response.found(
+          _resolveUrl(req, '/api/packages/versions/newUploadFinish'));
     } catch (err) {
-      return shelf.Response.found(_resolveUrl(req, '/api/packages/versions/newUploadFinish?error=$err'));
+      return shelf.Response.found(_resolveUrl(
+          req, '/api/packages/versions/newUploadFinish?error=$err'));
     }
   }
 
