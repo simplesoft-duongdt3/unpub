@@ -38,6 +38,9 @@ class App {
 
   final String uploaderToken;
 
+  // TODO check viewToken
+  final String viewToken;
+
   /// validate if the package can be published
   ///
   /// for more details, see: https://github.com/bytedance/unpub#package-validator
@@ -49,6 +52,7 @@ class App {
     required this.packageStore,
     required this.uploaderEmail,
     required this.uploaderToken,
+    required this.viewToken,
     this.upstream = 'https://pub.dev',
     this.uploadValidator,
     this.proxy_origin,
@@ -193,6 +197,25 @@ class App {
     }
 
     return _okWithJson(_versionToJson(packageVersion, req));
+  }
+
+  void _checkViewToken(shelf.Request req) {
+    if(viewToken.isNotEmpty) {
+      var authHeader = req.headers[HttpHeaders.authorizationHeader];
+      if (authHeader == null) throw 'missing authorization header';
+
+      var token = authHeader.split(' ').last;
+
+      // Get the expected token from environment variable
+      if (uploaderToken.isEmpty) {
+        throw 'UPLOADER_TOKEN environment variable not set or empty';
+      }
+
+      // Validate the token
+      if (token != uploaderToken) {
+        throw 'invalid authorization token';
+      }
+    }
   }
 
   @Route.get('/packages/<name>/versions/<version>.tar.gz')

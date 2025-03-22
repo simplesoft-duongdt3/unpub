@@ -7,7 +7,7 @@ services:
     volumes:
       - mongodb_data:/data/db
     ports:
-      - "27019:27017"
+      - "37019:27017"
     restart: unless-stopped
 
   # Unpub server
@@ -15,24 +15,45 @@ services:
     image: dart:stable
     working_dir: /app
     ports:
-      - "24000:4000"
+      - "34000:4000"
     volumes:
       - ./unpub:/app/unpub
       - ./package_storage:/app/unpub-packages
-    # environment:
-    #   - MONGO_URL=mongodb://mongodb:27017/dart_pub
-    #   - UPLOADER_TOKEN=89dsfl8s091212
-    #   - UPLOADER_EMAIL=doanthanhduong11031990@gmail.com
+    environment:
+      - UNPUB_HOST=0.0.0.0
+      - UNPUB_PORT=4000
+      - UNPUB_MONGO_DB=mongodb://mongodb:27017/dart_unpub
+      - UPLOADER_TOKEN=89dsfl8s091212
+      - VIEW_TOKEN=69askl909j0DLk009FDJOM
+      - UPLOADER_EMAIL=developer@masterisehomes.com
+      - AWS_S3_BUCKET_NAME=mh-mobile-test-bucket
+      - AWS_S3_ENDPOINT=s3.amazonaws.com
+      - AWS_DEFAULT_REGION=ap-southeast-1
+      - AWS_ACCESS_KEY_ID=???
+      - AWS_SECRET_ACCESS_KEY=???
+
     depends_on:
       - mongodb
     command: >
       bash -c "
         cd /app/unpub &&
         dart pub get &&
-        dart bin/unpub.dart --directory=/app/unpub-packages --database=mongodb://mongodb:27017/dart_pub --uploader-token=89dsfl8s091212 --uploader-email=doanthanhduong11031990@gmail.com
+        dart bin/unpub_s3.dart
       "
     restart: unless-stopped
 
+  nginx:
+    container_name: nginx_proxy
+    image: nginx:latest
+    ports:
+      - "8880:80"
+      - "443:443"
+    volumes:
+      - $PWD/nginx.conf:/etc/nginx/nginx.conf:ro
+      - $PWD/certs:/etc/nginx/certs:ro
+    depends_on:
+      - unpub
+    restart: always
 volumes:
   mongodb_data:
     driver: local

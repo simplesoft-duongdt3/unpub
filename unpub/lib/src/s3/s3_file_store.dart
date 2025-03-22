@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:cli';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:minio/minio.dart';
 import 'package:unpub/unpub.dart';
-import 'package:unpub_aws/core/aws_credentials.dart';
+import '../core/aws_credentials.dart';
 
 /// Use an AWS S3 Bucket as a package store
 class S3Store extends PackageStore {
@@ -52,11 +53,14 @@ class S3Store extends PackageStore {
   @override
   Future<void> upload(String name, String version, List<int> content) async {
     await minio!.putObject(
-        bucketName, _getObjectKey(name, version), Stream.value(content));
+        bucketName, _getObjectKey(name, version), Stream.value(Uint8List.fromList(content)));
   }
 
   @override
-  Stream<List<int>> download(String name, String version) {
-    return waitFor(minio!.getObject(bucketName, _getObjectKey(name, version)));
+  Stream<List<int>> download(String name, String version) async* {
+    final stream = await minio!.getObject(bucketName, _getObjectKey(name, version));
+    await for (final chunk in stream) {
+      yield chunk as List<int>;
+    }
   }
 }
