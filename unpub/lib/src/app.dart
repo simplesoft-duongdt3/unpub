@@ -221,6 +221,8 @@ class App {
   @Route.get('/packages/<name>/versions/<version>.tar.gz')
   Future<shelf.Response> download(
       shelf.Request req, String name, String version) async {
+    // TODO add _checkViewToken
+    // _checkViewToken(req);
     var package = await metaStore.queryPackage(name);
     if (package == null) {
       return shelf.Response.found(Uri.parse(upstream)
